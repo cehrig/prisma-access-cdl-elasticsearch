@@ -1,0 +1,7 @@
+server:
+  port: ${KIBANA_PORT}
+  host: 0.0.0.0
+elasticsearch:
+  hosts: [ "http://${ELASTICSEARCH_HOST}" ]
+  ssl:
+    verificationMode: none

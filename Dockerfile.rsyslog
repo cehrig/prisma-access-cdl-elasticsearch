@@ -1,0 +1,32 @@
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION}
+ARG RSYSLOG_VERSION
+
+RUN	apk --no-cache update
+RUN	apk --no-cache add \
+		git build-base automake libtool autoconf py-docutils gnutls gnutls-dev \
+		zlib-dev curl-dev mysql-dev libdbi-dev libuuid util-linux-dev \
+		libgcrypt-dev flex bison bsd-compat-headers linux-headers \
+		autoconf-archive \
+		libestr-dev \
+		libfastjson-dev \
+		liblognorm-dev \
+		liblogging-dev \
+        openssl \
+        curl
+
+WORKDIR /home/ci
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+    LD_LIBRARY_PATH=/usr/local/lib \
+    CFLAGS="-Os -fomit-frame-pointer -Wno-error=inline"
+RUN curl -O https://www.rsyslog.com/files/download/rsyslog/rsyslog-${RSYSLOG_VERSION}.tar.gz && \
+    tar xfv rsyslog-${RSYSLOG_VERSION}.tar.gz
+
+WORKDIR rsyslog-${RSYSLOG_VERSION}
+RUN autoreconf -fi && mkdir build
+
+WORKDIR build
+RUN ../configure --enable-imptcp --enable-omuxsock --enable-gnutls --disable-valgrind
+RUN make && make install
+
+CMD ["rsyslogd", "-nf", "/etc/rsyslog/rsyslog.conf"]

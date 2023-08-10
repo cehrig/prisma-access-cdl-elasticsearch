@@ -1,0 +1,64 @@
+version: "3.8"
+services:
+  rsyslog:
+    build:
+      args:
+        - ALPINE_VERSION=3.18.2
+        - RSYSLOG_VERSION=8.2306.0
+      dockerfile: Dockerfile.rsyslog
+    environment:
+      - TZ=Europe/Berlin
+    volumes:
+      - ./rsyslog:/etc/rsyslog
+      - unix-socket:/tmp/filebeat
+    ports:
+      - 6514:6514/tcp
+
+  filebeat:
+    build:
+      args:
+        - FILEBEAT_VERSION=${STACK_VERSION}
+      dockerfile: Dockerfile.filebeat
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./filebeat/fields.min.yml:/usr/share/filebeat/fields.min.yml
+      - ./elasticsearch/tls:/tmp/filebeat/certs
+      - unix-socket:/tmp/filebeat
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTIC_HOST}
+
+  kibana:
+    image: elastic/kibana:${STACK_VERSION}
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTIC_HOST}:${ES_PORT}
+      - KIBANA_PORT=${KIBANA_PORT}
+    ports:
+      - ${KIBANA_PORT}:${KIBANA_PORT}
+
+  elasticsearch:
+    image: elastic/elasticsearch:${STACK_VERSION}
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    ports:
+      - ${ES_PORT}:9200
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=${LICENSE}
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+volumes:
+  unix-socket:
+  es-data:
